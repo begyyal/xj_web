@@ -69,26 +69,14 @@ public class HtmlObject implements Cloneable {
 	return new HtmlObject(tag, parent, Type.Normal, properties);
     }
 
-    /**
-     * 構造最上位のルートオブジェクトを返却する。<br>
-     * htmlタグの親に該当するオブジェクトであり、例外的にタグを持たない。<br>
-     * また、このオブジェクトのみdoctypeを保持する。
-     */
     public static RootHtmlObject newRoot(HtmlDocType docType) {
 	return new RootHtmlObject(docType);
     }
 
-    /**
-     * コメントを表現するオブジェクトを返却する。<br>
-     * プロパティおよび配下オブジェクトを持つことはなく、コメント内容をコンテンツとして保持する。
-     */
     public static HtmlObject newComment(HtmlObject parent) {
 	return new HtmlObject(null, parent, Type.Comment, null);
     }
 
-    /**
-     * 複製したオブジェクトを返却する。子の{@link HtmlObject}も再帰的に複製される。
-     */
     @Override
     public HtmlObject clone() {
 	return new HtmlObject(id, tag, parent, type, XMapGen.of(properties),
@@ -98,18 +86,11 @@ public class HtmlObject implements Cloneable {
 	    false);
     }
 
-    /**
-     * 開始タグと閉じタグで囲まれたコンテンツに該当する文字列を追加する。
-     */
     public HtmlObject append(String content) {
 	childrenAndContents.add(content);
 	return this;
     }
 
-    /**
-     * 対象のオブジェクトの プロパティ/配下オブジェクト/コンテンツ をもって、<br>
-     * 主体オブジェクトのそれらに上書きを施す。
-     */
     public void update(HtmlObject o) {
 	if (o.id == id) {
 	    this.properties = o.properties;
@@ -121,10 +102,6 @@ public class HtmlObject implements Cloneable {
 	success = false;
     }
 
-    /**
-     * 文字列リソースから正常に変換されたオブジェクトかを判別する。<br>
-     * 配下に対しても再帰的に判別を行い、全てがtrueの場合にのみtrueを返却する。
-     */
     public boolean isSuccess() {
 	return success && (isComment()
 		|| childrenAndContents.stream(HtmlObject.class).allMatch(c -> c.isSuccess()));
@@ -172,10 +149,6 @@ public class HtmlObject implements Cloneable {
 		? XListGen.empty() : childrenAndContents.getStr();
     }
 
-    /**
-     * 配下オブジェクトおよびコンテンツの混合リストを返却する。<br>
-     * この混合リストはリソースの順序性を保持している。
-     */
     public VarList getChildrenAndContents() {
 	return childrenAndContents;
     }
@@ -212,24 +185,15 @@ public class HtmlObject implements Cloneable {
 	    .forEach(o -> o.aggregateElementsByClass(result, propertyKey, className));
     }
 
-    /**
-     * 主体および配下の内、対象の文字列をコンテンツに含むオブジェクトを返却する。
-     */
     public XList<HtmlObject> relatedBy(String keyword) {
 	return select(o -> o.childrenAndContents.stream(String.class)
 	    .anyMatch(str -> str.contains(keyword)));
     }
 
-    /**
-     * 主体および配下の内、指定の成功フラグを有するオブジェクトを返却する。
-     */
     public XList<HtmlObject> relatedBy(boolean isSuccess) {
 	return select(o -> o.success == isSuccess);
     }
 
-    /**
-     * 主体および配下の内、指定の述語関数にマッチするオブジェクトを返却する。
-     */
     public XList<HtmlObject> select(Predicate<HtmlObject> predicate) {
 	XList<HtmlObject> result = getProgeny().stream()
 	    .filter(predicate)
@@ -248,9 +212,6 @@ public class HtmlObject implements Cloneable {
 		}));
     }
 
-    /**
-     * 行毎に分割したリストで表した文字列リソースへ変換する。
-     */
     public XList<String> decode() {
 	return HtmlParser.process(this);
     }

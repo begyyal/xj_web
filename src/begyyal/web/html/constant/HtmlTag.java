@@ -1,8 +1,5 @@
 package begyyal.web.html.constant;
 
-/**
- * HTMLのタグを列挙したクラス。
- */
 public enum HtmlTag {
 
     Html("html"),
@@ -142,10 +139,6 @@ public enum HtmlTag {
         this.unneedEnclosure = unneedEnclosure;
     }
 
-    /**
-     * 対象文字列に合致するタグのオブジェクトを取得する。<br>
-     * 比較は{@link String#equalsIgnoreCase(String) 大文字/小文字を区別せず}に行う。
-     */
     public static HtmlTag parse(String str) {
         for (HtmlTag v : values())
             if (v.str.equalsIgnoreCase(str))

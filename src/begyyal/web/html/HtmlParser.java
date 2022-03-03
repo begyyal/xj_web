@@ -14,11 +14,6 @@ import begyyal.web.html.constant.HtmlTag;
 import begyyal.web.html.object.HtmlObject;
 import begyyal.web.html.object.HtmlObject.RootHtmlObject;
 
-/**
- * 文字列リソースと{@link HtmlObject}間での変換を行う。<br>
- * 構造検証の細部においては書式毎のdtdやw3cおよびwhatwgが掲げる規格へ準拠するものではない。<br>
- * ※現状タグ省略に未対応のため、とりわけそうした記述がある場合にそのノード以下の構成で変換失敗となりやすい。
- */
 public class HtmlParser {
 
     private static final String tagEnclosurePrefix = "</";
@@ -31,10 +26,6 @@ public class HtmlParser {
     private static final String commentSuffix = "-->";
     private static final String commentSuffixForScript = "//-->";
 
-    /**
-     * 対象の文字列リソースを{@link HtmlObject}へ変換する。<br>
-     * Nullセーフである。(失敗した場合、内部ステータスに対して印付けしたオブジェクトを返却する)
-     */
     public static RootHtmlObject process(XList<String> resource) {
 	return resource == null || resource.isEmpty()
 		? createFailedRoot()
@@ -44,10 +35,6 @@ public class HtmlParser {
 			.process();
     }
 
-    /**
-     * 指定された{@link HtmlObject}を文字列リソースへ変換する。<br>
-     * 配下にて変換に失敗したノードを含んでいる場合は、そのノードを除いた正常なノード全てに対して変換を施す。
-     */
     public static XList<String> process(HtmlObject o) {
 	return new Decoder().process(o);
     }

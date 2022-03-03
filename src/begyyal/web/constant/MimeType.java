@@ -16,17 +16,11 @@ public enum MimeType {
 	this.str = str;
     }
 
-    /**
-     * @return 対象文字列が、このMIMEが定義する文字列で開始されていた場合にtrue
-     */
     public boolean match(String headerValue) {
 	Objects.requireNonNull(headerValue);
 	return headerValue.trim().startsWith(str);
     }
 
-    /**
-     * 対象のContent-Type文字列からプロパティを抜粋する。
-     */
     public static XMap<String, String> getContentTypeProperties(String contentType) {
 
 	Objects.requireNonNull(contentType);

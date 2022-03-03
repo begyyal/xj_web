@@ -43,11 +43,6 @@ public enum HtmlDocType {
         this(null, null);
     }
 
-    /**
-     * 指定した文字列と{@link String#equals(Object)}にて公開識別子が一致する文書型を返却する。
-     *
-     * @return 列挙定数のいずれとも一致しなかった場合はnull
-     */
     public static HtmlDocType parseByPublicIdentifier(String str) {
         for (HtmlDocType type : values())
             if (type.needPublicIdentifier() && type.publicIdentifier.equals(str))
@@ -55,16 +50,10 @@ public enum HtmlDocType {
         return null;
     }
 
-    /**
-     * 本インスタンスが表現する文書型を記す上で公開識別子が求められるかを判別する。
-     */
     public boolean needPublicIdentifier() {
         return publicIdentifier != null;
     }
 
-    /**
-     * 本インスタンスが表現する文書型を記す上でシステム識別子が求められるかを判別する。
-     */
     public boolean needSystemIdentifier() {
         return systemIdentifier != null;
     }
