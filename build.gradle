@@ -12,6 +12,15 @@ java {
     }
 }
 
+compileJava {
+    doFirst {
+        options.compilerArgs = [
+            '--module-path', classpath.asPath,
+        ]
+        classpath = files()  
+    }
+}
+
 dependencies {
 	api files('jar/xj_commons.jar')
 }
@@ -33,7 +42,7 @@ tasks.withType(JavaCompile) {
 
 delete('resources/META-INF/')
 jar {
-	baseName = 'xj_web'
+	archivesBaseName = 'xj_web'
     from configurations.compileClasspath.collect{ it.isDirectory() ? it : zipTreeByCustom(it) }
 }
 
