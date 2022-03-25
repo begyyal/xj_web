@@ -10,15 +10,7 @@ java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(15)
     }
-}
-
-compileJava {
-    doFirst {
-        options.compilerArgs = [
-            '--module-path', classpath.asPath,
-        ]
-        classpath = files()  
-    }
+    modularity.inferModulePath.set(true)
 }
 
 dependencies {
@@ -31,8 +23,16 @@ sourceSets {
             srcDir 'src'
         }
         resources {
-            srcDir 'resources'
+			srcDir 'resources'
+		}
+    }
+    test {
+        java {
+            srcDir 'test'
         }
+		resources {
+			srcDir 'resources'
+		}
     }
 }
 
@@ -41,9 +41,22 @@ tasks.withType(JavaCompile) {
 }
 
 delete('resources/META-INF/')
+copy {
+	from 'LICENSE'
+	into 'resources/META-INF/'
+}
+
 jar {
 	archivesBaseName = 'xj_web'
     from configurations.compileClasspath.collect{ it.isDirectory() ? it : zipTreeByCustom(it) }
+}
+
+eclipse.classpath.file {
+     whenMerged { classpath ->
+		classpath.entries.findAll{ it.kind == 'lib' }.each{ 
+			it.entryAttributes['module'] = true 
+		}
+	}
 }
 
 FileTree zipTreeByCustom(File f){
