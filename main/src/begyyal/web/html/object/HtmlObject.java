@@ -149,6 +149,7 @@ public class HtmlObject implements Cloneable {
 		? XListGen.empty() : childrenAndContents.getStr();
     }
 
+    @SuppressWarnings("exports")
     public VarList getChildrenAndContents() {
 	return childrenAndContents;
     }
