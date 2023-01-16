@@ -55,7 +55,7 @@ jar {
 
 eclipse.classpath.file {
      whenMerged { classpath ->
-		classpath.entries.findAll{ it.kind == 'lib' }.each{ 
+		classpath.entries.findAll{ it.kind == 'lib' && !it.entryAttributes['test']  }.each{ 
 			it.entryAttributes['module'] = true 
 		}
 	}

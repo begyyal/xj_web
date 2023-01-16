@@ -123,7 +123,8 @@ public enum HtmlTag {
     Noscript("noscript"),
     Template("template"),
     Slot("slot"),
-    Canvas("canvas");
+    Canvas("canvas"),
+    Svg("svg");
 
     public final String str;
 

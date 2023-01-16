@@ -162,6 +162,7 @@ public class HtmlObject implements Cloneable {
 	return !isNormal() || !XStrings.equals(properties.get(propertyKey), propertyValue)
 		? childrenAndContents.stream(HtmlObject.class)
 		    .map(o -> o.findElementById(propertyKey, propertyValue))
+		    .filter(o -> o != null)
 		    .findFirst().orElse(null)
 		: this;
     }

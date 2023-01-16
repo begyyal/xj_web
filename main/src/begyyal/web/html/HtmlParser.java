@@ -56,22 +56,17 @@ public class HtmlParser {
 	}
 
 	private RootHtmlObject process() {
-
 	    RootHtmlObject o = null;
 	    try {
-
 		focusLine = resource.next().trim();
 		if (Strs.empty.equals(focusLine))
 		    removeAndNext();
-
 		skipXmlTagIfNeeded();
 		if ((focusObj = o = distinctDocType()) != null)
-		    while (recursiveExtraction() != null)
+		    while (!recursiveExtraction())
 			;
-
 	    } catch (UnfinishedStatement e) {
 	    }
-
 	    return o == null ? createFailedRoot() : o;
 	}
 
@@ -123,24 +118,31 @@ public class HtmlParser {
 		return null;
 	}
 
-	private XList<String> recursiveExtraction() throws UnfinishedStatement {
+	private boolean recursiveExtraction() throws UnfinishedStatement {
 
 	    if (!focusLine.startsWith(Strs.bracket2start)
-		    || focusLine.startsWith(tagEnclosurePrefix)) {
-		if (focusObj.isRoot())
-		    return markFailure();
+		    || focusLine.startsWith(tagEnclosurePrefix)
+		    || this.focusObj.tag == HtmlTag.Svg) {
+		if (focusObj.isRoot()) {
+		    this.focusObj.markFailure();
+		    return true;
+		}
 		appendContents();
-		return resource;
-	    } else if (focusLine.startsWith(commentPrefix))
-		return searchCommentEnclosure(focusObj, focusObj.tag == HtmlTag.Script);
+		return this.resource.isEmpty();
+	    } else if (focusLine.startsWith(commentPrefix)) {
+		searchCommentEnclosure(focusObj, focusObj.tag == HtmlTag.Script);
+		return this.resource.isEmpty();
+	    }
 
 	    Pair<String, Integer> brk = //
 		    XStrings.firstIndexOf(focusLine, Strs.space, Strs.bracket2end);
 	    HtmlTag tag = HtmlTag.parse(brk == null
 		    ? focusLine.substring(1)
 		    : focusLine.substring(1, brk.v2));
-	    if (tag == null)
-		return markFailure();
+	    if (tag == null) {
+		this.focusObj.markFailure();
+		return true;
+	    }
 
 	    if (brk != null)
 		substringAndNext(brk.v2 + 1);
@@ -150,34 +152,33 @@ public class HtmlParser {
 	    XMap<String, String> properties = null;
 	    if (brk == null || brk.v1 != Strs.bracket2end) {
 		properties = XMapGen.newi();
-		if (!extractProperties(properties))
-		    return markFailure();
+		if (!extractProperties(properties)) {
+		    this.focusObj.markFailure();
+		    return true;
+		}
 	    }
 
 	    HtmlObject child = focusObj = HtmlObject.newi(tag, focusObj, properties);
 
 	    if (!tag.unneedEnclosure)
 		while (!searchTagEnclosure()) {
-		    if (recursiveExtraction() == null)
-			return null;
+		    if (recursiveExtraction())
+			return true;
 		    focusObj = child;
 		}
 
-	    return resource.isEmpty() ? null : resource;
-	}
-
-	private XList<String> markFailure() {
-	    focusObj.markFailure();
-	    return null;
+	    return resource.isEmpty();
 	}
 
 	private void appendContents() throws UnfinishedStatement {
 
+	    boolean isSvg = this.focusObj.tag == HtmlTag.Svg;
 	    int brk, brk2;
 	    while ((brk = XStrings.indexOfIgnoreCase(focusLine,
 		tagEnclosurePrefix + focusObj.tag.str)) == -1) {
 
-		if ((brk2 = focusLine.indexOf(Strs.bracket2start)) != -1
+		if (!isSvg
+			&& (brk2 = focusLine.indexOf(Strs.bracket2start)) != -1
 			&& tryToExtractMixedChild(brk2)) {
 		    appendContents();
 		    return;
@@ -189,7 +190,8 @@ public class HtmlParser {
 		    throw new UnfinishedStatement();
 	    }
 
-	    if ((brk2 = focusLine.substring(0, brk).indexOf(Strs.bracket2start)) != -1
+	    if (!isSvg
+		    && (brk2 = focusLine.substring(0, brk).indexOf(Strs.bracket2start)) != -1
 		    && tryToExtractMixedChild(brk2)) {
 		appendContents();
 		return;
@@ -206,7 +208,7 @@ public class HtmlParser {
 		resource.next();
 	    }
 
-	    if (temp2.startsWith(Strs.bracket2end)) {
+	    if (temp2.startsWith(Strs.bracket2end) || isSvg) {
 		if (brk != 0) {
 		    focusObj.append(focusLine.substring(0, brk));
 		    substringAndNext(brk);
@@ -232,7 +234,7 @@ public class HtmlParser {
 	    gen.resource.next();
 
 	    try {
-		if (gen.recursiveExtraction() == null)
+		if (gen.recursiveExtraction())
 		    return false;
 	    } catch (UnfinishedStatement e) {
 		return false;
@@ -270,7 +272,7 @@ public class HtmlParser {
 	    return true;
 	}
 
-	private XList<String> searchCommentEnclosure(HtmlObject parent, boolean isScript)
+	private void searchCommentEnclosure(HtmlObject parent, boolean isScript)
 	    throws UnfinishedStatement {
 
 	    if (!isScript)
@@ -290,7 +292,6 @@ public class HtmlParser {
 		focusObj.append(focusLine.substring(0, brk));
 
 	    substringAndNext(brk + suffix.length());
-	    return resource;
 	}
 
 	private boolean extractProperties(XMap<String, String> properties)
