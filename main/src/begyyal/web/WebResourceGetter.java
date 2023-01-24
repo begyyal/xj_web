@@ -19,21 +19,35 @@ import begyyal.commons.object.collection.XList.XListGen;
 import begyyal.web.constant.MimeType;
 import begyyal.web.html.HtmlParser;
 import begyyal.web.html.object.HtmlObject;
+import begyyal.web.html.processor.ParallelHtmlParser;
+import begyyal.web.html.processor.SequentialHtmlParser;
 
 public class WebResourceGetter {
 
     // Chrome v69
     private static final String pseudoUserAgent = //
 	    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36";
-
     private static final String chunked = "chunked";
-
     private static final String gzip = "gzip";
-
     private static final int bufChunkSize = 1000;
+    private static final HtmlParser[] htmlParser = new HtmlParser[] {
+	    new SequentialHtmlParser(),
+	    new ParallelHtmlParser() };
 
     public static HtmlObject getHtmlObject(String urlStr) {
-	return HtmlParser.process(get(urlStr));
+	return getHtmlObject(urlStr, false);
+    }
+
+    public static HtmlObject getHtmlObject(String urlStr, boolean isParallel) {
+	return htmlParser[isParallel ? 1 : 0].process(get(urlStr));
+    }
+
+    public static HtmlParser getSequentialHtmlParser() {
+	return htmlParser[0];
+    }
+
+    public static HtmlParser getParallelHtmlParser() {
+	return htmlParser[1];
     }
 
     public static XList<String> get(String urlStr) {

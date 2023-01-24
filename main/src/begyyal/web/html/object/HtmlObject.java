@@ -13,9 +13,9 @@ import begyyal.commons.object.collection.XMap;
 import begyyal.commons.object.collection.XMap.XMapGen;
 import begyyal.commons.util.function.ReflectionResolver;
 import begyyal.commons.util.function.XStrings;
-import begyyal.web.html.HtmlParser;
 import begyyal.web.html.constant.HtmlDocType;
 import begyyal.web.html.constant.HtmlTag;
+import begyyal.web.html.processor.SequentialHtmlParser;
 
 /**
  * DOMライクにHTMLを構造表現したオブジェクト。<br>
@@ -215,7 +215,7 @@ public class HtmlObject implements Cloneable {
     }
 
     public XList<String> decode() {
-	return HtmlParser.process(this);
+	return SequentialHtmlParser.process(this);
     }
 
     private enum Type {
