@@ -2,7 +2,6 @@ package begyyal.web.html.processor;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import begyyal.commons.constant.Strs;
@@ -13,6 +12,7 @@ import begyyal.commons.object.collection.XMap;
 import begyyal.commons.object.collection.XMap.XMapGen;
 import begyyal.commons.util.function.XStrings;
 import begyyal.web.html.HtmlParser;
+import begyyal.web.html.constant.Const;
 import begyyal.web.html.constant.HtmlDocType;
 import begyyal.web.html.constant.HtmlTag;
 import begyyal.web.html.object.HtmlObject;
@@ -20,19 +20,9 @@ import begyyal.web.html.object.HtmlObject.RootHtmlObject;
 
 public class SequentialHtmlParser implements HtmlParser {
 
-    private static final String tagEnclosurePrefix = "</";
-    private static final String xmlDeclarationPrefix = "<?xml";
-    private static final String xmlDeclarationSuffix = "?>";
-    private static final String docTypePrefix = "<!doctype";
-    private static final String docTypeElement1 = "html";
-    private static final String docTypeElement2 = "PUBLIC";
-    private static final String commentPrefix = "<!--";
-    private static final String commentSuffix = "-->";
-    private static final String commentSuffixForScript = "//-->";
-
-    public SequentialHtmlParser(){
+    public SequentialHtmlParser() {
     }
-    
+
     @Override
     public RootHtmlObject process(List<String> resource) {
 	var res = resource == null || resource.isEmpty()
@@ -42,10 +32,6 @@ public class SequentialHtmlParser implements HtmlParser {
 		    .collect(Collectors.toCollection(LinkedList::new)))
 			.process();
 	return res;
-    }
-
-    public static XList<String> process(HtmlObject o) {
-	return new Decoder().process(o);
     }
 
     private static RootHtmlObject createFailedRoot() {
@@ -81,32 +67,32 @@ public class SequentialHtmlParser implements HtmlParser {
 
 	private void skipXmlTagIfNeeded() throws UnfinishedStatement {
 
-	    if (!focusLine.startsWith(xmlDeclarationPrefix))
+	    if (!focusLine.startsWith(Const.xmlDeclarationPrefix))
 		return;
 	    substringAndNext(5);
 
 	    int brk;
-	    while ((brk = focusLine.indexOf(xmlDeclarationSuffix)) == -1)
+	    while ((brk = focusLine.indexOf(Const.xmlDeclarationSuffix)) == -1)
 		removeAndNext();
 	    substringAndNext(brk + 2);
 	}
 
 	private RootHtmlObject distinctDocType() throws UnfinishedStatement {
 
-	    if (!XStrings.startsWithIgnoreCase(focusLine, docTypePrefix))
+	    if (!XStrings.startsWithIgnoreCase(focusLine, Const.docTypePrefix))
 		return HtmlObject.newRoot(HtmlDocType.None);
 	    substringAndNext(9);
 
-	    if (!XStrings.startsWithIgnoreCase(focusLine, docTypeElement1))
+	    if (!XStrings.startsWithIgnoreCase(focusLine, Const.docTypeElement1))
 		return null;
-	    substringAndNext(docTypeElement1.length());
+	    substringAndNext(Const.docTypeElement1.length());
 
 	    if (focusLine.startsWith(Strs.bracket2end)) {
 		substringAndNext(1);
 		return HtmlObject.newRoot(HtmlDocType.V5);
-	    } else if (!XStrings.startsWithIgnoreCase(focusLine, docTypeElement2))
+	    } else if (!XStrings.startsWithIgnoreCase(focusLine, Const.docTypeElement2))
 		return null;
-	    substringAndNext(docTypeElement2.length());
+	    substringAndNext(Const.docTypeElement2.length());
 
 	    HtmlDocType type = HtmlDocType.parseByPublicIdentifier(extractQuotedValue());
 	    if (type == null)
@@ -130,7 +116,7 @@ public class SequentialHtmlParser implements HtmlParser {
 	private boolean recursiveExtraction() throws UnfinishedStatement {
 
 	    if (!focusLine.startsWith(Strs.bracket2start)
-		    || focusLine.startsWith(tagEnclosurePrefix)
+		    || focusLine.startsWith(Const.tagEnclosurePrefix)
 		    || this.focusObj.tag == HtmlTag.Svg) {
 		if (focusObj.isRoot()) {
 		    this.focusObj.markFailure();
@@ -138,7 +124,7 @@ public class SequentialHtmlParser implements HtmlParser {
 		}
 		appendContents();
 		return this.resource.isEmpty();
-	    } else if (focusLine.startsWith(commentPrefix)) {
+	    } else if (focusLine.startsWith(Const.commentPrefix)) {
 		searchCommentEnclosure(focusObj, focusObj.tag == HtmlTag.Script);
 		return this.resource.isEmpty();
 	    }
@@ -184,7 +170,7 @@ public class SequentialHtmlParser implements HtmlParser {
 	    boolean isSvg = this.focusObj.tag == HtmlTag.Svg;
 	    int brk, brk2;
 	    while ((brk = XStrings.indexOfIgnoreCase(focusLine,
-		tagEnclosurePrefix + focusObj.tag.str)) == -1) {
+		Const.tagEnclosurePrefix + focusObj.tag.str)) == -1) {
 
 		if (!isSvg
 			&& (brk2 = focusLine.indexOf(Strs.bracket2start)) != -1
@@ -230,7 +216,7 @@ public class SequentialHtmlParser implements HtmlParser {
 
 	private boolean tryToExtractMixedChild(int brk) {
 
-	    if (focusLine.substring(brk).startsWith(tagEnclosurePrefix))
+	    if (focusLine.substring(brk).startsWith(Const.tagEnclosurePrefix))
 		return false;
 
 	    Generator gen = new Generator(new LinkedList<>(resource));
@@ -257,7 +243,7 @@ public class SequentialHtmlParser implements HtmlParser {
 
 	    if (focusLine.length() < 2 + focusObj.tag.str.length()
 		    || !XStrings.startsWithIgnoreCase(focusLine,
-			tagEnclosurePrefix + focusObj.tag.str))
+			Const.tagEnclosurePrefix + focusObj.tag.str))
 		return false;
 
 	    String temp = focusLine.substring(2 + focusObj.tag.str.length()).trim();
@@ -283,7 +269,7 @@ public class SequentialHtmlParser implements HtmlParser {
 		focusObj = HtmlObject.newComment(parent);
 	    focusLine = focusLine.substring(4);
 
-	    String suffix = isScript ? commentSuffixForScript : commentSuffix;
+	    String suffix = isScript ? Const.commentSuffixForScript : Const.commentSuffix;
 	    int brk;
 	    while ((brk = focusLine.indexOf(suffix)) == -1) {
 		focusObj.append(focusLine);
@@ -405,112 +391,6 @@ public class SequentialHtmlParser implements HtmlParser {
 		if (focusObj != null)
 		    focusObj.markFailure();
 	    }
-	}
-    }
-
-    private static class Decoder {
-
-	private static final String indent = "    ";
-
-	private final XList<String> resource = XListGen.newi();
-
-	private Decoder() {
-	}
-
-	private XList<String> process(HtmlObject o) {
-
-	    if (o instanceof RootHtmlObject) {
-		decodeRoot((RootHtmlObject) o);
-		for (HtmlObject child : o.getChildren())
-		    recursiveDecode(child, 0);
-	    } else
-		recursiveDecode(o, 0);
-
-	    return resource;
-	}
-
-	private void decodeRoot(RootHtmlObject casted) {
-
-	    StringBuilder sb = new StringBuilder();
-	    sb.append(docTypePrefix).append(Strs.space).append(docTypeElement1);
-	    if (!casted.docType.needPublicIdentifier())
-		resource.add(sb.append(Strs.bracket2end).toString());
-	    else {
-		sb.append(Strs.space).append(docTypeElement2).append(Strs.space)
-		    .append(Strs.dblQuotation)
-		    .append(casted.docType.publicIdentifier)
-		    .append(Strs.dblQuotation);
-		if (!casted.docType.needSystemIdentifier())
-		    resource.add(sb.append(Strs.bracket2end).toString());
-		else
-		    resource.add(sb.append(Strs.space).append(Strs.dblQuotation)
-			.append(casted.docType.systemIdentifier).append(Strs.dblQuotation)
-			.append(Strs.bracket2end).toString());
-	    }
-	}
-
-	private void recursiveDecode(HtmlObject o, int depth) {
-	    if (o.isComment())
-		decodeComment(o, depth);
-	    else
-		decodeNormal(o, depth);
-	}
-
-	private void decodeComment(HtmlObject o, int depth) {
-
-	    StringBuilder sb = new StringBuilder();
-	    XList<String> contents = o.getContents();
-
-	    sb.append(commentPrefix).append(Strs.space);
-
-	    if (!contents.isEmpty()) {
-		addWithIndent(depth, sb.append(contents.get(0)).toString());
-		for (int i = 1; i < contents.size(); i++)
-		    addWithIndent(depth, contents.get(i));
-		resource.setTip(resource.getTip() + Strs.space + commentSuffix);
-	    } else
-		addWithIndent(depth, sb.append(commentSuffix).toString());
-	}
-
-	private void decodeNormal(HtmlObject o, int depth) {
-
-	    StringBuilder sb = new StringBuilder();
-	    sb.append(Strs.bracket2start).append(o.tag.str).append(Strs.space);
-	    for (Map.Entry<String, String> entry : o.getProperties().entrySet()) {
-		sb.append(entry.getKey());
-		if (entry.getValue() != null)
-		    sb.append(Strs.equal).append(Strs.dblQuotation).append(entry.getValue())
-			.append(Strs.dblQuotation);
-		sb.append(Strs.space);
-	    }
-	    addWithIndent(depth,
-		sb.replace(sb.length() - 1, sb.length(), Strs.bracket2end).toString());
-
-	    String tagEnclosure = null;
-	    if (o.tag != null && !o.tag.unneedEnclosure)
-		tagEnclosure = tagEnclosurePrefix + o.tag.str + Strs.bracket2end;
-
-	    if (o.getChildrenAndContents().size() != 1 || o.getContents().isEmpty()) {
-		for (Object cc : o.getChildrenAndContents())
-		    if (cc instanceof HtmlObject)
-			recursiveDecode((HtmlObject) cc, depth + 1);
-		    else
-			addWithIndent(depth, (String) cc);
-		if (tagEnclosure != null)
-		    if (o.getChildrenAndContents().isEmpty()) {
-			resource.setTip(resource.getTip() + tagEnclosure);
-		    } else
-			addWithIndent(depth, tagEnclosure);
-
-	    } else if (tagEnclosure != null)
-		resource.setTip(resource.getTip() + o.getContents().getTip() + tagEnclosure);
-	}
-
-	private void addWithIndent(int depth, String str) {
-	    String pre = Strs.empty;
-	    for (int i = 0; i < depth; i++)
-		pre += indent;
-	    resource.add(pre + str);
 	}
     }
 }

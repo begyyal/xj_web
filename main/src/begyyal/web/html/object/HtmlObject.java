@@ -1,6 +1,7 @@
 package begyyal.web.html.object;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
@@ -13,9 +14,9 @@ import begyyal.commons.object.collection.XMap;
 import begyyal.commons.object.collection.XMap.XMapGen;
 import begyyal.commons.util.function.ReflectionResolver;
 import begyyal.commons.util.function.XStrings;
+import begyyal.web.html.constant.Const;
 import begyyal.web.html.constant.HtmlDocType;
 import begyyal.web.html.constant.HtmlTag;
-import begyyal.web.html.processor.SequentialHtmlParser;
 
 /**
  * DOMライクにHTMLを構造表現したオブジェクト。<br>
@@ -215,7 +216,7 @@ public class HtmlObject implements Cloneable {
     }
 
     public XList<String> decode() {
-	return SequentialHtmlParser.process(this);
+	return new Decoder().process(this);
     }
 
     private enum Type {
@@ -258,5 +259,110 @@ public class HtmlObject implements Cloneable {
     @Override
     public int hashCode() {
 	return this.id;
+    }
+
+    private class Decoder {
+
+	private static final String indent = "    ";
+	private final XList<String> resource = XListGen.newi();
+
+	private Decoder() {
+	}
+
+	private XList<String> process(HtmlObject o) {
+
+	    if (o instanceof RootHtmlObject) {
+		decodeRoot((RootHtmlObject) o);
+		for (HtmlObject child : o.getChildren())
+		    recursiveDecode(child, 0);
+	    } else
+		recursiveDecode(o, 0);
+
+	    return resource;
+	}
+
+	private void decodeRoot(RootHtmlObject casted) {
+
+	    StringBuilder sb = new StringBuilder();
+	    sb.append(Const.docTypePrefix).append(Strs.space).append(Const.docTypeElement1);
+	    if (!casted.docType.needPublicIdentifier())
+		resource.add(sb.append(Strs.bracket2end).toString());
+	    else {
+		sb.append(Strs.space).append(Const.docTypeElement2).append(Strs.space)
+		    .append(Strs.dblQuotation)
+		    .append(casted.docType.publicIdentifier)
+		    .append(Strs.dblQuotation);
+		if (!casted.docType.needSystemIdentifier())
+		    resource.add(sb.append(Strs.bracket2end).toString());
+		else
+		    resource.add(sb.append(Strs.space).append(Strs.dblQuotation)
+			.append(casted.docType.systemIdentifier).append(Strs.dblQuotation)
+			.append(Strs.bracket2end).toString());
+	    }
+	}
+
+	private void recursiveDecode(HtmlObject o, int depth) {
+	    if (o.isComment())
+		decodeComment(o, depth);
+	    else
+		decodeNormal(o, depth);
+	}
+
+	private void decodeComment(HtmlObject o, int depth) {
+
+	    StringBuilder sb = new StringBuilder();
+	    XList<String> contents = o.getContents();
+
+	    sb.append(Const.commentPrefix).append(Strs.space);
+
+	    if (!contents.isEmpty()) {
+		addWithIndent(depth, sb.append(contents.get(0)).toString());
+		for (int i = 1; i < contents.size(); i++)
+		    addWithIndent(depth, contents.get(i));
+		resource.setTip(resource.getTip() + Strs.space + Const.commentSuffix);
+	    } else
+		addWithIndent(depth, sb.append(Const.commentSuffix).toString());
+	}
+
+	private void decodeNormal(HtmlObject o, int depth) {
+
+	    StringBuilder sb = new StringBuilder();
+	    sb.append(Strs.bracket2start).append(o.tag.str).append(Strs.space);
+	    for (Map.Entry<String, String> entry : o.getProperties().entrySet()) {
+		sb.append(entry.getKey());
+		if (entry.getValue() != null)
+		    sb.append(Strs.equal).append(Strs.dblQuotation).append(entry.getValue())
+			.append(Strs.dblQuotation);
+		sb.append(Strs.space);
+	    }
+	    addWithIndent(depth,
+		sb.replace(sb.length() - 1, sb.length(), Strs.bracket2end).toString());
+
+	    String tagEnclosure = null;
+	    if (o.tag != null && !o.tag.unneedEnclosure)
+		tagEnclosure = Const.tagEnclosurePrefix + o.tag.str + Strs.bracket2end;
+
+	    if (o.getChildrenAndContents().size() != 1 || o.getContents().isEmpty()) {
+		for (Object cc : o.getChildrenAndContents())
+		    if (cc instanceof HtmlObject)
+			recursiveDecode((HtmlObject) cc, depth + 1);
+		    else
+			addWithIndent(depth, (String) cc);
+		if (tagEnclosure != null)
+		    if (o.getChildrenAndContents().isEmpty()) {
+			resource.setTip(resource.getTip() + tagEnclosure);
+		    } else
+			addWithIndent(depth, tagEnclosure);
+
+	    } else if (tagEnclosure != null)
+		resource.setTip(resource.getTip() + o.getContents().getTip() + tagEnclosure);
+	}
+
+	private void addWithIndent(int depth, String str) {
+	    String pre = Strs.empty;
+	    for (int i = 0; i < depth; i++)
+		pre += indent;
+	    resource.add(pre + str);
+	}
     }
 }
