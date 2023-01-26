@@ -131,19 +131,19 @@ public enum HtmlTag {
     public final boolean unneedEnclosure;
 
     private HtmlTag(String str) {
-        this.str = str;
-        this.unneedEnclosure = false;
+	this.str = str;
+	this.unneedEnclosure = false;
     }
 
     private HtmlTag(String str, boolean unneedEnclosure) {
-        this.str = str;
-        this.unneedEnclosure = unneedEnclosure;
+	this.str = str;
+	this.unneedEnclosure = unneedEnclosure;
     }
 
     public static HtmlTag parse(String str) {
-        for (HtmlTag v : values())
-            if (v.str.equalsIgnoreCase(str))
-                return v;
-        return null;
+	for (HtmlTag v : values())
+	    if (v.str.equalsIgnoreCase(str))
+		return v;
+	return null;
     }
 }

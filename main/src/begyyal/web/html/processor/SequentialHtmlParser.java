@@ -26,18 +26,12 @@ public class SequentialHtmlParser implements HtmlParser {
     @Override
     public RootHtmlObject process(List<String> resource) {
 	var res = resource == null || resource.isEmpty()
-		? createFailedRoot()
+		? HtmlObject.createFailedRoot()
 		: new Generator(resource.stream()
 		    .filter(s -> s != null)
 		    .collect(Collectors.toCollection(LinkedList::new)))
 			.process();
 	return res;
-    }
-
-    private static RootHtmlObject createFailedRoot() {
-	RootHtmlObject o = HtmlObject.newRoot(null);
-	o.markFailure();
-	return o;
     }
 
     private static class Generator {
@@ -62,7 +56,7 @@ public class SequentialHtmlParser implements HtmlParser {
 			;
 	    } catch (UnfinishedStatement e) {
 	    }
-	    return o == null ? createFailedRoot() : o;
+	    return o == null ? HtmlObject.createFailedRoot() : o;
 	}
 
 	private void skipXmlTagIfNeeded() throws UnfinishedStatement {

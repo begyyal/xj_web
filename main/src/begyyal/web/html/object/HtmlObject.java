@@ -18,11 +18,6 @@ import begyyal.web.html.constant.Const;
 import begyyal.web.html.constant.HtmlDocType;
 import begyyal.web.html.constant.HtmlTag;
 
-/**
- * DOMライクにHTMLを構造表現したオブジェクト。<br>
- * 原則としてタグ1つ(閉じタグがあれば1対)が本オブジェクト1つで表現される。<br>
- * 開始タグから閉じタグの間で出現するタグを「配下オブジェクト」とし、文字列を「コンテンツ」とする。
- */
 public class HtmlObject implements Cloneable {
 
     private static final AtomicInteger idGen = new AtomicInteger();
@@ -225,9 +220,13 @@ public class HtmlObject implements Cloneable {
 	Comment;
     }
 
-    public static class RootHtmlObject
-	    extends
-	    HtmlObject {
+    public static RootHtmlObject createFailedRoot() {
+	RootHtmlObject o = HtmlObject.newRoot(null);
+	o.markFailure();
+	return o;
+    }
+
+    public static class RootHtmlObject extends HtmlObject {
 
 	public final HtmlDocType docType;
 
