@@ -75,7 +75,7 @@ public class TagInterpreter {
 	}
     }
 
-    private class InterpreterBase {
+    private abstract class InterpreterBase {
 	protected final BlockingQueue<TIRecord> q;
 	protected final LinkedList<String> res;
 	protected String line;
@@ -303,7 +303,7 @@ public class TagInterpreter {
 		    this.processAsTagEnclosure4NNT(contents);
 		else if (this.line.startsWith(Const.commentPrefix))
 		    this.processAsComments4NNT(contents);
-		else // Note this part in the contents is not plain at line feed etc...
+		else
 		    this.processAsTag4NNT(contents);
 
 	    } while (!done);
@@ -380,24 +380,20 @@ public class TagInterpreter {
 	    this.q.add(TagRecord.newEnclosure(tag));
 	}
 
-	private void processAsTagEnclosure4NNT(List<String> contents) {
-
-	    // this.substringAndNext(2);
-	    // var brk = XStrings.firstIndexOf(this.line, Strs.bracket2end);
-	    // var tagStr = brk == null ? this.line : this.line.substring(0, brk.v2);
-	    // HtmlTag tag = HtmlTag.parse(tagStr);
-	    // if (tag == null)
-	    // throw new IllegalFormatException("Unexpected tag phrase is found. -> " + tagStr);
-	    // if (brk == null) {
-	    // this.removeAndNext(true);
-	    // if (!this.line.startsWith(Strs.bracket2end))
-	    // throw new IllegalFormatException(
-	    // "Unexpected format is found in tag enclosure.");
-	    // this.substringAndNext(1);
-	    // } else
-	    // this.substringAndNext(brk.v2 + 1);
-	    //
-	    // this.q.add(TagRecord.newEnclosure(tag));
+	private void processAsTagEnclosure4NNT(List<String> contents)
+	    throws IllegalFormatException {
+	    var brk = XStrings.firstIndexOf(this.line, Strs.bracket2end);
+	    if (brk == null) {
+		contents.add(this.line);
+		this.removeAndNext(true);
+		if (!this.line.startsWith(Strs.bracket2end))
+		    throw new IllegalFormatException(
+			"Unexpected format is found in tag enclosure.");
+		this.substringAndNext(1);
+	    } else {
+		contents.add(this.line.substring(0, brk.v2 + 1));
+		this.substringAndNext(brk.v2 + 1);
+	    }
 	}
 
 	private void processAsContents() {
@@ -415,7 +411,7 @@ public class TagInterpreter {
 	}
 
 	private void processAsComments() {
-	    this.substringAndNext(Const.commentPrefix.length());
+	    this.substringAndNext(Const.commentPrefix.length(), false);
 	    Pair<String, Integer> brk;
 	    List<String> comments = XGen.newArrayList();
 	    while ((brk = XStrings.firstIndexOf(this.line, Const.commentSuffix)) == null) {
@@ -430,6 +426,13 @@ public class TagInterpreter {
 	}
 
 	private void processAsComments4NNT(List<String> contents) {
+	    Pair<String, Integer> brk;
+	    while ((brk = XStrings.firstIndexOf(this.line, Const.commentSuffix)) == null) {
+		contents.add(this.line);
+		this.removeAndNext(false);
+	    }
+	    contents.add(this.line.substring(0, brk.v2 + Const.commentSuffix.length()));
+	    this.substringAndNext(brk.v2 + Const.commentSuffix.length());
 	}
 
 	private XMap<String, String> extractProperties()

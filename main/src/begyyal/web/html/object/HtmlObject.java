@@ -1,6 +1,7 @@
 package begyyal.web.html.object;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -84,6 +85,11 @@ public class HtmlObject implements Cloneable {
 
     public HtmlObject append(String content) {
 	childrenAndContents.add(content);
+	return this;
+    }
+
+    public HtmlObject append(List<String> content) {
+	childrenAndContents.addAll(content);
 	return this;
     }
 

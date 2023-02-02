@@ -4,9 +4,11 @@ import java.util.LinkedList;
 import java.util.concurrent.BlockingQueue;
 
 import begyyal.commons.util.function.XUtils;
+import begyyal.web.exception.IllegalFormatException;
 import begyyal.web.html.constant.RecType;
 import begyyal.web.html.object.HtmlObject;
 import begyyal.web.html.object.TIRecord;
+import begyyal.web.html.object.TagRecord;
 
 public class ModelConstructor {
 
@@ -30,22 +32,65 @@ public class ModelConstructor {
 	} catch (InterruptedException e) {
 	    return HtmlObject.createFailedRoot();
 	}
-	
+
+	var cst = new ByRecConstructor(ho);
 	this.q.drainTo(this.records);
-	while (this.records.isEmpty() || this.process(ho)) {
-	    XUtils.sleep(drainInterval);
-	    this.q.drainTo(this.records);
+	try {
+	    while (this.records.isEmpty() || this.processDrainedRecs(cst)) {
+		XUtils.sleep(drainInterval);
+		this.q.drainTo(this.records);
+	    }
+	} catch (IllegalFormatException e) {
 	}
+
 	return ho;
     }
 
-    private boolean process(HtmlObject ho) {
+    private boolean processDrainedRecs(ByRecConstructor cst) throws IllegalFormatException {
 	TIRecord rec = null;
-	while ((rec = this.records.poll()) != null) {
-	    if (rec.getType() == RecType.Fin)
+	while ((rec = this.records.poll()) != null)
+	    if (!cst.process(rec))
 		return false;
-
-	}
 	return true;
+    }
+
+    private class ByRecConstructor {
+	private final LinkedList<HtmlObject> stack;
+
+	private ByRecConstructor(HtmlObject ho) {
+	    this.stack = new LinkedList<>();
+	    this.stack.add(ho);
+	}
+
+	private boolean process(TIRecord rec) throws IllegalFormatException {
+	    boolean cntne = true;
+	    switch (rec.getType()) {
+		case Doctype:
+		    ;
+		case Tag:
+		    this.processAsTag(rec.getAsTag());
+		case Contents:
+		    this.stack.getLast().append(rec.getAsContents());
+		case Comments:
+		    var ho = HtmlObject.newComment(this.stack.getLast());
+		    ho.append(rec.getAsContents());
+		case Fin:
+		    cntne = false;
+	    }
+	    return cntne;
+	}
+
+	private void processAsTag(TagRecord rec) throws IllegalFormatException {
+	    if (rec.isEnclosure) {
+		var ho = this.stack.removeLast();
+		if (ho.tag != rec.type) {
+		    ho.markFailure();
+		    throw new IllegalFormatException("A tag is enclosed correctly.");
+		}
+	    } else {
+		var ho = HtmlObject.newi(rec.type, this.stack.getLast(), rec.props);
+		this.stack.add(ho);
+	    }
+	}
     }
 }
