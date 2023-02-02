@@ -130,9 +130,9 @@ public class TagInterpreter {
 	}
 
 	protected void removeAndNext(boolean trim) {
-	    do
-		this.line = trim ? this.res.poll().trim() : this.res.poll();
-	    while (this.line.isEmpty());
+	    while ((this.line = this.res.poll()) != null
+		    && (trim ? (this.line = this.line.trim()) : this.line).isEmpty())
+		;
 	}
     }
 

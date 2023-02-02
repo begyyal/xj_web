@@ -63,20 +63,21 @@ public class ModelConstructor {
 	}
 
 	private boolean process(TIRecord rec) throws IllegalFormatException {
+
 	    boolean cntne = true;
-	    switch (rec.getType()) {
-		case Doctype:
-		    ;
-		case Tag:
-		    this.processAsTag(rec.getAsTag());
-		case Contents:
-		    this.stack.getLast().append(rec.getAsContents());
-		case Comments:
-		    var ho = HtmlObject.newComment(this.stack.getLast());
-		    ho.append(rec.getAsContents());
-		case Fin:
-		    cntne = false;
-	    }
+	    if (rec.getType() == RecType.Tag)
+		this.processAsTag(rec.getAsTag());
+
+	    else if (rec.getType() == RecType.Contents)
+		this.stack.getLast().append(rec.getAsContents());
+
+	    else if (rec.getType() == RecType.Comments) {
+		var ho = HtmlObject.newComment(this.stack.getLast());
+		ho.append(rec.getAsContents());
+
+	    } else if (rec.getType() == RecType.Fin)
+		cntne = false;
+
 	    return cntne;
 	}
 
