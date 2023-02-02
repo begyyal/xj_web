@@ -9,6 +9,7 @@ import java.util.concurrent.BlockingQueue;
 import begyyal.commons.constant.Strs;
 import begyyal.commons.object.Pair;
 import begyyal.commons.object.collection.PairList.PairListGen;
+import begyyal.commons.object.collection.XMap.XMapGen;
 import begyyal.commons.object.collection.XGen;
 import begyyal.commons.object.collection.XMap;
 import begyyal.commons.util.function.XStrings;
@@ -101,7 +102,7 @@ public class TagInterpreter {
 
 	private List<String> extractQuotedValue(String quatation)
 	    throws UnfinishedStatementException {
-	    this.substringAndNext(1);
+	    this.substringAndNext(1, false);
 	    int brk;
 	    List<String> values = XGen.newArrayList();
 	    while ((brk = this.line.indexOf(quatation)) == -1) {
@@ -116,15 +117,22 @@ public class TagInterpreter {
 	}
 
 	protected void substringAndNext(int begin) {
-	    this.line = begin < this.line.length()
-		    ? this.line.substring(begin).trim() : Strs.empty;
-	    if (this.line.isEmpty())
-		this.removeAndNext();
+	    this.substringAndNext(begin, true);
 	}
 
-	protected void removeAndNext() {
-	    while ((this.line = this.res.poll()).isEmpty())
-		;
+	protected void substringAndNext(int begin, boolean trim) {
+	    if (begin < this.line.length())
+		this.line = trim ? this.line.substring(begin).trim() : this.line.substring(begin);
+	    else
+		this.line = Strs.empty;
+	    if (this.line.isEmpty())
+		this.removeAndNext(trim);
+	}
+
+	protected void removeAndNext(boolean trim) {
+	    do
+		this.line = trim ? this.res.poll().trim() : this.res.poll();
+	    while (this.line.isEmpty());
 	}
     }
 
@@ -262,16 +270,44 @@ public class TagInterpreter {
 		this.processAsContents();
 	}
 
-	private void processAsNotNestedTag() {
+	private void processAsNotNestedTag()
+	    throws IllegalFormatException, UnfinishedStatementException {
 
-	    String tagEnclosure = Const.tagEnclosurePrefix + this.notNested.str;
-	    boolean divided = false;
-	    String keep = null;
-	    Pair<String, Integer> brk = null;
+	    var tagEnclosure = Const.tagEnclosurePrefix + this.notNested.str;
+	    boolean done = false;
 	    List<String> contents = XGen.newArrayList();
 
-	    // TODO 
-	    
+	    // Minimum identification
+	    do {
+		var brk = XStrings.firstIndexOf(this.line, Strs.bracket2start);
+		if (brk == null) {
+		    contents.add(this.line);
+		    this.removeAndNext(false);
+		    continue;
+		}
+
+		var str = this.line.substring(0, brk.v2);
+		if (!str.isEmpty())
+		    contents.add(str);
+		this.substringAndNext(brk.v2, true);
+
+		if (this.line.startsWith(tagEnclosure)) {
+		    this.substringAndNext(tagEnclosure.length(), true);
+		    if (!this.line.startsWith(Strs.bracket2end))
+			throw new IllegalFormatException(
+			    "Unexpected format is found in tag enclosure.");
+		    this.substringAndNext(1, false);
+		    break;
+
+		} else if (this.line.startsWith(Const.tagEnclosurePrefix))
+		    this.processAsTagEnclosure4NNT(contents);
+		else if (this.line.startsWith(Const.commentPrefix))
+		    this.processAsComments4NNT(contents);
+		else // Note this part in the contents is not plain at line feed etc...
+		    this.processAsTag4NNT(contents);
+
+	    } while (!done);
+
 	    this.addContents2q(RecType.Contents, contents);
 	    this.q.add(TagRecord.newEnclosure(notNested));
 	    this.notNested = null;
@@ -288,16 +324,40 @@ public class TagInterpreter {
 	    if (brk != null)
 		this.substringAndNext(brk.v2 + 1);
 	    else
-		this.removeAndNext();
+		this.removeAndNext(true);
 
-	    XMap<String, String> properties = null;
+	    XMap<String, String> properties = XMapGen.empty();
 	    if (brk == null || brk.v1 != '>')
-		if (this.extractProperties() == null)
+		if ((properties = this.extractProperties()) == null)
 		    throw new IllegalFormatException();
 
 	    this.q.add(TagRecord.newi(tag, properties));
 	    if (notNestedTags.contains(tag))
 		this.notNested = tag;
+	}
+
+	private void processAsTag4NNT(List<String> contents) throws UnfinishedStatementException {
+	    Pair<String, Integer> brk = null;
+	    do {
+		brk = XStrings.firstIndexOf(this.line, Strs.equal, Strs.bracket2end);
+		if (brk == null) {
+		    contents.add(this.line);
+		    this.removeAndNext(true);
+
+		} else if (Strs.equal.equals(brk.v1)) {
+		    var str = this.line.substring(0, brk.v2 + 1);
+		    this.substringAndNext(brk.v2 + 1);
+		    str = str
+			    + Strs.dblQuotation
+			    + this.extractQuotedValueAsLine()
+			    + Strs.dblQuotation;
+		    contents.add(str);
+
+		} else {
+		    contents.add(this.line.substring(0, brk.v2 + 1));
+		    this.substringAndNext(brk.v2 + 1);
+		}
+	    } while (brk == null || !Strs.bracket2end.equals(brk.v1));
 	}
 
 	private void processAsTagEnclosure() throws IllegalFormatException {
@@ -309,7 +369,7 @@ public class TagInterpreter {
 	    if (tag == null)
 		throw new IllegalFormatException("Unexpected tag phrase is found. -> " + tagStr);
 	    if (brk == null) {
-		this.removeAndNext();
+		this.removeAndNext(true);
 		if (!this.line.startsWith(Strs.bracket2end))
 		    throw new IllegalFormatException(
 			"Unexpected format is found in tag enclosure.");
@@ -320,14 +380,36 @@ public class TagInterpreter {
 	    this.q.add(TagRecord.newEnclosure(tag));
 	}
 
+	private void processAsTagEnclosure4NNT(List<String> contents) {
+
+	    // this.substringAndNext(2);
+	    // var brk = XStrings.firstIndexOf(this.line, Strs.bracket2end);
+	    // var tagStr = brk == null ? this.line : this.line.substring(0, brk.v2);
+	    // HtmlTag tag = HtmlTag.parse(tagStr);
+	    // if (tag == null)
+	    // throw new IllegalFormatException("Unexpected tag phrase is found. -> " + tagStr);
+	    // if (brk == null) {
+	    // this.removeAndNext(true);
+	    // if (!this.line.startsWith(Strs.bracket2end))
+	    // throw new IllegalFormatException(
+	    // "Unexpected format is found in tag enclosure.");
+	    // this.substringAndNext(1);
+	    // } else
+	    // this.substringAndNext(brk.v2 + 1);
+	    //
+	    // this.q.add(TagRecord.newEnclosure(tag));
+	}
+
 	private void processAsContents() {
 	    Pair<String, Integer> brk;
 	    List<String> contents = XGen.newArrayList();
 	    while ((brk = XStrings.firstIndexOf(this.line, Strs.bracket2start)) == null) {
 		contents.add(this.line);
-		this.removeAndNext();
+		this.removeAndNext(false);
 	    }
-	    contents.add(this.line.substring(0, brk.v2));
+	    var str = this.line.substring(0, brk.v2);
+	    if (!str.isEmpty())
+		contents.add(str);
 	    this.substringAndNext(brk.v2);
 	    this.addContents2q(RecType.Contents, contents);
 	}
@@ -338,11 +420,16 @@ public class TagInterpreter {
 	    List<String> comments = XGen.newArrayList();
 	    while ((brk = XStrings.firstIndexOf(this.line, Const.commentSuffix)) == null) {
 		comments.add(this.line);
-		this.removeAndNext();
+		this.removeAndNext(false);
 	    }
-	    comments.add(this.line.substring(0, brk.v2));
+	    var str = this.line.substring(0, brk.v2);
+	    if (!str.isEmpty())
+		comments.add(str);
 	    this.substringAndNext(brk.v2 + Const.commentSuffix.length());
 	    this.addContents2q(RecType.Comments, comments);
+	}
+
+	private void processAsComments4NNT(List<String> contents) {
 	}
 
 	private XMap<String, String> extractProperties()
@@ -350,16 +437,16 @@ public class TagInterpreter {
 
 	    boolean done = false;
 	    var props = PairListGen.<String, String>newi();
-	    while (!done && this.line != null) {
+	    do {
 		var brk = XStrings.firstIndexOf(this.line, Strs.equal, Strs.bracket2end);
 		if (brk == null) {
 		    XStrings.applyEachToken(this.line, k -> props.add(k, null));
-		    this.removeAndNext();
+		    this.removeAndNext(true);
 
 		} else if (Strs.equal.equals(brk.v1)) {
-		    XStrings.applyEachToken(
-			this.line.substring(0, brk.v2), k -> props.add(k, null));
-		    if (props.isEmpty())
+		    var str = this.line.substring(0, brk.v2);
+		    XStrings.applyEachToken(str, k -> props.add(k, null));
+		    if (str.isBlank())
 			throw new IllegalFormatException(
 			    "Tag property key is not found at left side of equal character.");
 		    this.substringAndNext(brk.v2 + 1);
@@ -371,7 +458,7 @@ public class TagInterpreter {
 		    this.substringAndNext(brk.v2 + 1);
 		    done = true;
 		}
-	    }
+	    } while (!done && this.line != null);
 
 	    return props.toMapWithApplyingFirstValue();
 	}
